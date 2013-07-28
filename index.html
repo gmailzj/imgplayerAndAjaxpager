@@ -1,0 +1,603 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>分页demo</title>
+<link href="css/style.css" rel="stylesheet" type="text/css" media="all" />
+<script type="text/javascript" src="js/jquery-1.4.2.min.js"></script>
+</head>
+<body>
+<div id="photoListwrapper">	
+	<a href="javascript:void(0)" index="0"><img src="images/801.jpg" /></a>
+	<a href="javascript:void(0)" index="1"><img src="images/809.jpg" /></a>
+	<a href="javascript:void(0)" index="13"><img src="images/80x80.jpg" /></a>
+</div>
+<div class="floatmask" style='display:none;' id="floatmask"></div><!--图片播放器遮罩层-->
+<div class="floatposter" style='display:none;' id="playerWrapper">
+	<div class="floatposter_bg"></div>
+	<div class="floatposter_con">
+		<div class="poster_area">
+			<div class="poster_bigpic"><img id="slideImgBig" src="" alt=""></div><!--poster_bigpic 大图 END-->
+			<p class="poster_num" id="slideImgTitle">剧照 7/12</p>
+			<a href="javascript:void(0)" id="slidePhotoPrev" title="上一张" class="postertigger postertigger_L postertigger_L_none">上一张</a>
+			<a href="javascript:void(0)" id="slidePhotoNext" title="下一张" class="postertigger postertigger_R">下一张</a>
+		</div><!--poster_area 大图展示 END-->
+		<div class="poster_pic">
+			<div class="scroll">
+				<a href="javascript:void(0)" class="scrolltigger scrolltigger_L scrolltigger_L_none" id="slidePrev">上一页</a>
+				<a href="javascript:void(0)" class="scrolltigger scrolltigger_R" id="slideNext">下一页</a>
+				<div class="scroll_contain">
+					<ul class="scrollpic" id="slideThumbWrapper">
+					</ul>
+				</div>
+			</div><!--scroll  END-->
+		</div><!--poster_pic 小图 END-->
+		<a href="javascript:void(0)" title="关闭" class="posterclose" id="btn_posterclose">关闭</a>
+	</div>
+</div>
+
+<script>
+/*剧照、海报图片播放器*/
+
+function PosterPicPlayer(dataSource, options){
+	//数据源一条记录  [typeid, picUrl, thumbUrl]
+	var data = [
+				{'typeid':1,'picUrl':'images/b1.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':1,'picUrl':'images/b9.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':1,'picUrl':'images/b5.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':1,'picUrl':'images/b10.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':1,'picUrl':'images/b2.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':1,'picUrl':'images/b3.jpg','thumbUrl':'images/806.jpg'},
+				{'typeid':1,'picUrl':'images/b4.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':1,'picUrl':'images/b6.jpg','thumbUrl':'images/801.jpg'},
+				{'typeid':1,'picUrl':'images/b7.jpg','thumbUrl':'images/809.jpg'},
+				{'typeid':1,'picUrl':'images/b8.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':1,'picUrl':'images/b11.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':1,'picUrl':'images/b12.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':1,'picUrl':'images/b8.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':1,'picUrl':'images/b1.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':2,'picUrl':'images/b2.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':2,'picUrl':'images/b3.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':2,'picUrl':'images/b4.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':2,'picUrl':'images/b5.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':2,'picUrl':'images/b6.jpg','thumbUrl':'images/80x80.jpg'},
+				{'typeid':2,'picUrl':'images/b7.jpg','thumbUrl':'images/80x80.jpg'}
+	];
+	//console.log(options);
+
+	//触发player的图片list的wrapper
+	this.photoListwrapperID = options.photoListwrapperID;
+
+	//player的wrapper
+	this.playerWrapperID = options.playerWrapperID;
+
+	//项
+	this.slidePhotoPrevID = options.slidePhotoPrevID;
+	this.slidePhotoNextID = options.slidePhotoNextID;
+	//页
+	this.slidePrevID = options.slidePrevID;
+	this.slideNextID = options.slideNextID;
+
+	//关闭
+	this.closeID = options.closeID;
+
+	//标题
+	this.titleID = options.titleID;
+
+	this.dataSource = dataSource || data;
+	this.stillArr = [];
+	this.posterArr = [];
+	this.bothTotalNum = 0;
+	this.stillTotalNum = 0;
+	this.posterTotalNum = 0;
+	
+	this.slideImgBigID = options.slideImgBigID;
+	this.slideThumbWrapperID = options.slideThumbWrapperID;
+	
+	this.curr_item = null;
+	this.curr_page = 1;
+	this.pernum = 7;
+}
+
+
+
+PosterPicPlayer.prototype = {
+	typeid:{'still':1, 'poster':2},
+	init:function(){
+		var data = this.dataSource;
+		var stillArr = [];
+		var	posterArr= [];	
+		var filter_data = [];
+		var indexA = indexB = 0;
+
+		for (var i=0, len=data.length; i<len; i++) {
+			 if(data[i].typeid == this.typeid.still ){
+			 	indexA++;
+			 	data[i].typeIndex = indexA;
+				stillArr.push(data[i]);
+			 } else if(data[i].typeid == this.typeid.poster){
+			 	indexB++;
+			 	data[i].typeIndex = indexB;
+				posterArr.push(data[i]);
+			 }
+			 filter_data.push(data[i]);
+		}
+		
+		this.stillArr = stillArr;
+		this.posterArr = posterArr;
+		
+		this.dataSource = this.stillArr.concat(this.posterArr);
+		
+		this.stillTotalNum = stillArr.length;
+		this.posterTotalNum = posterArr.length;
+		this.bothTotalNum = this.stillTotalNum +this.posterTotalNum;
+
+		//页数最大值
+		this.pageMaxNum = Math.ceil((this.bothTotalNum)/this.pernum);
+		
+		this.initialUI();
+		this._bindEvents();
+
+		
+		//this.currItem(0);
+		
+	},
+	
+	//初始化缩略图列表
+	initialUI:function(){
+		
+		
+		function outputThumbListHtml(rows){
+			var htmlArr = [];
+			var _src = '';
+			var curr_str = '';
+			for(var i=0, len=rows.length; i<len; i++){
+				curr_str = ''
+				_src = rows[i].thumbUrl;
+				i==0 && (curr_str ='class="on"') ; 
+				htmlArr.push('<li '+curr_str+'><a href="javascript:void(0)" title="" index="'+i+'"><img src="'+_src+'" alt=""><span class="mask"><b></b></span></a></li>');
+			}
+			return htmlArr;
+		};
+		
+		//初始化缩略图列表
+
+		var dataSource = this.dataSource;
+		var _tmpArr3 = outputThumbListHtml(dataSource);
+		var _tmpHtml = _tmpArr3.join('');
+		
+		var e = document.getElementById(this.slideThumbWrapperID+'');
+		e.innerHTML = _tmpHtml;
+	},
+	//事件绑定
+	_bindEvents:function(){
+		var _this = this;
+		
+		//下一个
+		jQuery('#'+this.slidePhotoNextID).bind('click', function(e){
+			_this._nextItem();
+			e.preventDefault();
+
+		});
+		//上一个
+		jQuery('#'+this.slidePhotoPrevID).bind('click', function(e){
+			_this._prevItem();
+			e.preventDefault();
+
+		});
+		
+		
+		//绑定当前项
+		var e = document.getElementById(_this.slideThumbWrapperID+'');
+
+		e && jQuery("a",e).bind('click',function(){
+			var index = parseInt(jQuery(this).attr('index'), 10);
+			_this.currItem(index);
+		});
+		e = null;
+
+		//触发player打开
+		e = document.getElementById(_this.photoListwrapperID+'');
+		if(e){
+			jQuery("a",e).bind('click',function(b){
+
+				var index = parseInt(jQuery(this).attr('index'), 10);
+				//console.log(index)
+				_this.currItem(index);
+				b.preventDefault();
+			});
+		}
+
+		e = null;
+
+		//下一页
+		//this.slideNextID = slideNextID;
+		jQuery('#'+this.slideNextID).bind('click', function(e){
+			_this._nextPage();
+			e.preventDefault();
+
+		});
+
+		//上一页
+		//this.slidePrevID = slidePrevID;
+		jQuery('#'+this.slidePrevID).bind('click', function(e){
+			_this._prevPage();
+			e.preventDefault();
+
+		});
+
+		//关闭按钮
+		jQuery('#'+this.closeID).bind('click', function(e){
+			jQuery('.floatmask').hide();
+			jQuery('#'+_this.playerWrapperID).hide();
+			_this.curr_item = null;//置空，以免关闭播放器后再打开同一个图片的时候没效果(在缩略图slide中这种情况是无效操作)
+
+		});
+
+
+
+	},
+
+	_prevPage:function(){
+	 	var i = this.curr_page;
+	 	if(i<=1){
+	 		return;
+	 	}
+	 	this.currPage(i-1);
+	},
+
+
+	_nextPage:function(){
+	 	var i = this.curr_page;
+	 	if(i>=this.pageMaxNum){
+	 		return;
+	 	}
+	 	this.currPage(i+1);
+	},
+	currPage:function(i){
+		
+		var flag_next = (i > this.curr_page);//向左向右标记	
+		var _this = this;
+		//每一个li的宽度,也可以通过js计算出来
+		var width = 92;
+		var pernum = this.pernum;
+		
+		
+		if(i == this.curr_page){
+			return;
+		}
+		if(typeof this.clickflag !== 'undefined' && this.clickflag > 0){
+			return;
+		}
+
+		this.clickflag  = 1;//标记为已经点击
+		
+		this.curr_page = i;
+		
+		var moveWidth =0;
+		if(flag_next){//向右
+			moveWidth = (i-1) * pernum * width;
+			
+		} else {
+			moveWidth = (i-1) * pernum * width;
+
+
+		}
+		moveWidth =-moveWidth;
+		var position =  moveWidth;
+		scroll(this.slideThumbWrapperID, position)
+		//切换以后的回调
+		function scroll(containId, position){
+			jQuery("#"+containId).animate(
+				{
+					'marginLeft': position
+				}, 
+				{ 
+					'duration': 500 ,
+					'complete': scrollCallback
+				}
+			);
+
+		}
+		function scrollCallback(){
+			_this.clickflag  = 0;//效果执行完以后标记为0
+			setBtnStatus();
+		}
+		
+		//设置切换按钮状态
+		function setBtnStatus(){
+			var currP = _this.curr_page;
+			var btn_prev = jQuery('#'+_this.slidePrevID);
+			var btn_next = jQuery('#'+_this.slideNextID);
+
+			if(currP <= 1){
+				btn_prev.addClass('scrolltigger_L_none');
+			} else {
+				btn_prev.removeClass('scrolltigger_L_none');
+			}
+
+			if(currP == _this.pageMaxNum){
+			 	btn_next.addClass('scrolltigger_R_none');
+			} else {
+
+			 	btn_next.removeClass('scrolltigger_R_none');
+			}
+
+
+		}
+	},
+	showTitle:function(item){
+		//剧照 7/12
+		var str = '';
+		var typeid = item['typeid'];
+		var typeIndex = item['typeIndex'];
+		if(typeid == this.typeid.still){
+			str+='剧照 ' + typeIndex + '/' +this.stillTotalNum;
+		} else if(typeid == this.typeid.poster){
+			str+='海报 ' + typeIndex + '/' +this.posterTotalNum;
+		}
+		jQuery('#' + this.titleID).html(str);
+	},
+	showFloat:function(){
+		jQuery('#'+this.playerWrapperID).show();
+	},
+	currItem:function(i){
+
+		//console.log(arguments.callee.caller)
+		var item = this.dataSource[i];
+		if(i<0 || i>this.bothTotalNum) return;
+		if(i==this.curr_item) return;
+
+		var src = item['picUrl'];
+
+		var e = document.getElementById(this.slideImgBigID+'');
+		e.src = src;
+		
+		/*
+		if(Math.ceil(i/this.pernum) != Math.ceil(this.curr_item/this.pernum)){
+
+		}*/
+
+		this.curr_item = i; 
+
+		//设置滑动
+		//高亮当前缩略图
+		var wrapID = this.slideThumbWrapperID;
+		var tmp = jQuery('li',document.getElementById(wrapID));
+		tmp.removeClass('on');
+		tmp.eq(i).addClass('on');
+
+		//设置分页滚动
+		this.currPage(Math.ceil((this.curr_item+1)/this.pernum));
+
+		//设置项按钮状态
+		var btn_item_prev = jQuery('#'+this.slidePhotoPrevID);
+		var btn_item_next = jQuery('#'+this.slidePhotoNextID);
+
+		if(this.curr_item <= 0){
+			btn_item_prev.addClass('postertigger_L_none');
+		} else {
+			btn_item_prev.removeClass('postertigger_L_none');
+		}
+
+		if(this.curr_item == (this.bothTotalNum-1)){
+		 	btn_item_next.addClass('postertigger_R_none');
+		} else {
+		 	btn_item_next.removeClass('postertigger_R_none');
+		}
+
+		//设置title
+		this.showTitle(item);
+
+		//显示浮层
+		this.showFloat();
+
+	},
+	_prevItem:function(){
+		var i = this.curr_item;
+		if(i<=0){
+			return;
+		}
+		this.currItem(i-1);
+	},
+	_nextItem:function(){
+		var i = this.curr_item;
+		if(i>=this.bothTotalNum-1){
+	 		return;
+	 	}
+		this.currItem(i+1);
+	}
+
+};
+
+var opt = {
+	photoListwrapperID:'photoListwrapper',
+	playerWrapperID:'playerWrapper', 
+	slideImgBigID:'slideImgBig', 
+	slideThumbWrapperID:'slideThumbWrapper', 
+	slidePhotoPrevID:'slidePhotoPrev', 
+	slidePhotoNextID:'slidePhotoNext', 
+	slidePrevID:'slidePrev', 
+	slideNextID:'slideNext', 
+	closeID:'btn_posterclose', 
+	titleID:'slideImgTitle'
+};
+player1 = new PosterPicPlayer(false, opt);
+player1.init();
+</script>
+
+
+
+
+<p class="list-pager" id="douban_comment_pager">     
+</p>
+
+<p class="list-pager" id="douban_comment_pager1">     
+</p>
+<p class="list-pager" id="douban_comment_pager2">     
+</p>
+<p class="list-pager" id="douban_comment_pager3">     
+</p>
+<p class="list-pager" id="douban_comment_pager4">     
+</p>
+<p class="list-pager" id="douban_comment_pager5">     
+</p>
+
+
+<script>
+//评论分页
+//参数: 总页数、当前页、每页显示的记录数
+function Pager(total, curr, perpage, container){
+	this.total =  total || 0;
+	this.curr = curr || 1;
+	this.perpage =  perpage || 10;
+	this.container = (typeof container == "string" ?document.getElementById(container) : container) || null;
+	this.pagecount = Math.ceil(this.total/this.perpage);
+	this.is_show_one = false;
+}
+
+Pager.prototype={
+	init:function(){
+		if(this.pagecount==1 && !this.is_show_one ){
+			this.container && (this.container.style.display = 'none');
+			return ;
+		}
+		this.turnPage(1);
+	},
+	bulitLinks:function(){
+		var total = this.total;
+		var curr = this.curr;
+		var perpage = this.perpage;
+		var str_dom = this.echoPageNav();
+		this.container.innerHTML = str_dom;
+
+	},
+	bindEvent:function(){
+		var _this = this;
+		//回调curr
+		jQuery("a", this.container).click(function(){
+			//var index = parseInt(this.innerHTML,10);
+			var index = parseInt(jQuery(this).attr('index'));
+
+			_this.turnPage(index);
+		});
+
+	},
+	turnPage:function(i){
+		this.curr = i;
+		this.bulitLinks();
+		this.bindEvent();
+
+	},
+	createElem:function(curr, i){
+		var html = [];
+		if(curr == i){
+			html.push('<strong>'+i+'</strong>');
+		} else {
+			html.push('<a href="javascript:void(0)" index="'+i+'"> '+i+'</a>');
+		}
+		return html.join('');
+	},
+	createUrl:function(max, curr){
+		var html = [];
+		for(var i=1; i<=max; i++){
+			html.push(this.createElem(curr, i));
+		}
+		return html.join('');
+	},
+	echoPageNav:function(){
+		var _this = this;
+		var total = this.total;
+		var curr = this.curr;
+		var perpage = this.perpage;
+		var pagecount = this.pagecount;
+		
+		//占位符...
+		var _placeholder = "<span>...</span>";
+
+		var html = [];
+		//上一页
+		if(curr == 1){
+			//html.push('<span class="next_page">上一页</span>')
+		} else {
+			html.push('<a href="javascript:void(0)" class="next_page next_page1" index="'+(this.curr-1)+'">上一页<b class="n_p_l"></b></a>')
+		}
+
+		//小于10项 全部显示 不要切换 不用判断分支了
+		if(pagecount<=10){
+
+			html.push(this.createUrl(pagecount,curr));
+				
+		} else {
+
+
+			for(var i=1; i<=pagecount; i++){
+				
+				//如果当前页大于5同时页码i小于当前页的前面3个同时页码i又不是1，跳过
+				if(curr>5 && i<curr-3 && i!=1){
+					continue;
+				}
+				//打印页码i
+				html.push(this.createElem(curr,i));	
+
+				//打印第1个页码后面的占位符
+				if(i==1 && curr>5){
+					html.push(_placeholder);
+				}
+
+				//最多打印当前页后面的4个
+				if(i >= curr + 4){
+					break;
+				}
+				
+			}
+
+			//打印页尾
+			//如果当前页小于等于末页的前面第5个，需要打印页尾
+			//否则上面break那里打印了
+			if(curr<=pagecount-5){
+				//如果当前页不等于末页的前面第5个，打印占位符
+				if(curr!=pagecount-5){
+					html.push(_placeholder);
+				}
+				
+				//打印末页
+				html.push(this.createElem(curr,pagecount));
+			}
+			
+
+		}
+
+		//下一页
+		if(curr == pagecount){
+			//html.push('<span class="next_page">下一页</span>');
+		} else {
+			html.push('<a href="javascript:void(0)" class="next_page next_page2" index="'+(this.curr+1)+'">下一页<b class="n_p_r"></b></a>');		
+		}
+
+		var str = html.join('');
+		return str;
+
+	}
+
+}
+
+
+
+//(function(){
+				  pager = new Pager(130, 1, 10, 'douban_comment_pager');
+				pager.init();
+			//})();
+pager1 = new Pager(20, 1, 10, 'douban_comment_pager1');
+pager1.init();
+
+pager2 = new Pager(10, 1, 10, 'douban_comment_pager2');
+pager2.init();
+
+pager3 = new Pager(60, 1, 10, 'douban_comment_pager3');
+pager3.init();
+
+pager4 = new Pager(80, 1, 10, 'douban_comment_pager4');
+pager4.init();
+</script>
+</body>
+</html>
