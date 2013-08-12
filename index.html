@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <title>分页demo</title>
@@ -340,6 +340,49 @@ PosterPicPlayer.prototype = {
 	showFloat:function(){
 		jQuery('#'+this.playerWrapperID).show();
 	},
+	loadImg2:function(src, elem){
+
+		var e = elem;
+		e.style.display ='none';
+		e.onerror=function(){e.style.display = ''} ;
+
+		if(jQuery.browser.msie){
+			elem.onreadystatechange = function(){  
+	            if(elem.readyState=="complete"||elem.readyState=="loaded"){ 
+	                e.style.display = '';
+	            } 
+        	}   
+		} else {
+
+			elem.onload=function(){ 
+	            if(elem.complete==true){ 
+	               e.style.display = ''; 
+	            } 
+	        }  
+		}
+		
+		if(e.src == src){
+			e.style.display = '';
+		} else {
+			e.src = src;
+		}
+
+	},
+	loadImg:function(src, elem){
+		var e = elem;
+		e.style.display ='none';
+		jQuery(e).load(function(){
+			e.style.display = '';
+		})
+		e.onerror=function(){e.style.display = ''} ;
+		if(e.src == src){
+			e.style.display = '';
+		} else {
+			e.src = src;
+		}
+		
+
+	},
 	currItem:function(i){
 
 		//console.log(arguments.callee.caller)
@@ -347,10 +390,13 @@ PosterPicPlayer.prototype = {
 		if(i<0 || i>this.bothTotalNum) return;
 		if(i==this.curr_item) return;
 
+		var _this = this;
 		var src = item['picUrl'];
-
-		var e = document.getElementById(this.slideImgBigID+'');
-		e.src = src;
+		
+		var e = document.getElementById(this.slideImgBigID+'');	
+		setTimeout(function(){
+			_this.loadImg2(src, e)
+		} ,0);
 		
 		/*
 		if(Math.ceil(i/this.pernum) != Math.ceil(this.curr_item/this.pernum)){
